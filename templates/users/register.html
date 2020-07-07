@@ -1,0 +1,95 @@
+{% extends "base.html" %} {% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trxstyle.css') }}" />
+<div class="form-header">
+	<p>Register New User</p>
+</div>
+
+<div class="form" method="post">
+	<form class="form-trx">
+		<div class="form-label-group form-group">
+			<input
+				type="text"
+				class="form-control"
+				id="username"
+				name="username"
+				placeholder="UserName"
+				maxlength="10"
+				required
+				onblur="if(this.value != '') callAjax(this.id, this.value);"
+			/>
+			<label for="username">UserName*</label>
+		</div>
+
+		<div class="form-label-group form-group">
+			<input
+				type="password"
+				class="form-control"
+				name="password"
+				id="password"
+				placeholder="Password"
+				maxlength="10"
+				required
+				onblur="if(this.value != '') callAjax(this.id, this.value);"
+			/>
+			<label for="password">Password*</label>
+		</div>
+		<br />
+		<div class="form-group">
+			<button type="submit" id="register" class="btn btn-info">
+				Register
+			</button>
+		</div>
+	</form>
+</div>
+
+<script src="/static/js/utils.js"></script>
+
+<script>
+	$(document).ready(function () {
+		$('#register').click(function () {
+			event.preventDefault();
+
+			if (checkForm($('form')) || toStop) {
+				toStop = false;
+				return;
+			}
+
+			var info = {
+				username: $('#username').val(),
+				password: $('#password').val(),
+			};
+
+			$.ajax({
+				type: 'POST',
+				url: '/user_register',
+				data: info,
+				success: function (savedInfo, textStatus, jqXHR) {
+					showMsg(savedInfo.message);
+					// alert(textStatus + '  ' + jqXHR.status);
+				},
+				error: function (jqHXR, textStatus, errorThrown) {
+					showMsg(jqXHR.status + ' ' + errorThrown);
+				},
+			});
+			$('#username').val('');
+			$('#password').val('');
+		});
+	});
+
+	function checkForm(form) {
+		if (this.username.value == '') {
+			showMsg('Please enter the Name.');
+			this.username.focus();
+			return true;
+		}
+		if (this.password.value == '') {
+			showMsg('Please enter the Password.');
+			this.password.focus();
+			return true;
+		}
+		return false;
+	}
+</script>
+
+{% endblock %}

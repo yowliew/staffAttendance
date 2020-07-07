@@ -1,0 +1,248 @@
+{% extends "base.html" %} {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/datatables.min.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/all.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trxstyle.css') }}" />
+<script src="{{ url_for('static', filename='js/datatables.min.js') }}"></script>
+
+<div class="form-header">
+	<p>Register Employee Class</p>
+</div>
+
+<div class="container">
+	<div class="row" style="width: 123%;">
+		<div class="col-md-4">
+			<form class="form-trx">
+				<div class="form-row">
+					<div class="form-group col-md-4">
+						<label for="emp_class">Employee Class*</label>
+						<input
+							type="text"
+							class="form-control"
+							id="emp_class"
+							name="emp_class"
+							maxlength="50"
+							required
+							onblur="if(this.value != '') callAjax(this.id, this.value);"
+						/>
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group col-md-12">
+						<label for="emp_desc">Description*</label>
+						<input type="text" class="form-control" id="emp_desc" name="emp_desc" maxlength="100" required />
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group col-md-4">
+						<label for="max_working">Maximum Hour</label>
+						<input type="number" class="form-control" id="max_working" name="max_working" />
+					</div>
+					<div class="form-group col-md-4">
+						<label for="ot_after">OT After Hour</label>
+						<input type="number" class="form-control" id="ot_after" name="ot_after" />
+					</div>
+					<div class="form-group col-md-4">
+						<label for="ot_rate">OT Rate</label>
+						<input type="number" class="form-control" id="ot_rate" name="ot_rate" />
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group col-md-3">
+						<label for="active_flag">Active</label>
+						<select class="custom-select form-control" id="active_flag" name="active_flag">
+							<option value="Yes">Yes</option>
+							<option value="No">No</option>
+						</select>
+					</div>
+				</div>
+				<br />
+				<div class="form-group form-group">
+					<button type="submit" id="new_class" class="btn btn-info" disabled>
+						New Class
+					</button>
+					<button type="submit" id="register" class="btn btn-info">
+						Save
+					</button>
+				</div>
+			</form>
+		</div>
+		<div class="col-md-8">
+			<div class="form">
+				<table id="datatable" class="table table-striped table-hover table-bordered" style="cursor: grab;">
+					<thead>
+						<tr>
+							<th>Class</th>
+							<th>Description</th>
+							<th>Maximum Hour</th>
+							<th>OT After</th>
+							<th>OT Rate</th>
+							<th>Active</th>
+						</tr>
+					</thead>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+
+<script>
+	$(document).ready(function () {
+		$('#new_class').on('click', function () {
+			$('#register').attr('disabled', false);
+			$('#new_class').attr('disabled', true);
+
+			$('#emp_class').attr('disabled', false);
+			$('.form-group input, select').val('');
+			$('.form-group :input[type="number"]').val('0.00');
+			$('#active_flag').val('Yes');
+		});
+
+		$('#register').on('click', function () {
+			if (updateEmployee()) {
+				$('#register').attr('disabled', false);
+				$('#new_class').attr('disabled', true);
+				$('#emp_class').attr('disabled', false);
+				$('.form-group input, select').val('');
+				$('.form-group :input[type="number"]').val('0.00');
+				$('#active_flag').val('Yes');
+			}
+		});
+
+		$('.table').on('click', 'tbody tr', function () {
+			populateEdit(this);
+		});
+	});
+
+	$(window).on('load', function () {
+		populateDatatable();
+	});
+
+	function updateEmployee() {
+		if (checkForm($('form')) || toStop) {
+			toStop = false;
+			return false;
+		} else {
+			var info = {
+				emp_class: $('#emp_class').val(),
+				emp_desc: $('#emp_desc').val(),
+				max_working: $('#max_working').val(),
+				ot_after: $('#ot_after').val(),
+				ot_rate: $('#ot_rate').val(),
+				active_flag: $('#active_flag').val(),
+			};
+
+			$.ajax({
+				type: 'POST',
+				url: '/empClass_register',
+				data: info,
+				success: function (savedInfo, textStatus, jqXHR) {
+					showMsg(savedInfo.message);
+					populateDatatable();
+				},
+				error: function (jqHXR, textStatus, errorThrown) {
+					showMsg(jqXHR.status + ' ' + errorThrown);
+				},
+			});
+			return true;
+		}
+	}
+
+	function populateDatatable() {
+		$.ajax({
+			type: 'GET',
+			dataType: 'json',
+			url: '/empClass_list',
+			success: function (data) {
+				$('#datatable').DataTable({
+					destroy: true,
+					data: data,
+					responsive: true,
+					paging: true,
+					lengthMenu: [
+						[6, 12, 18, -1],
+						[6, 12, 18, 'All'],
+					],
+					ordering: true,
+					processing: true,
+					sort: true,
+					searching: true,
+					scrollY: 290,
+					deferRender: true,
+					info: true,
+					columns: [
+						{ data: 'emp_class' },
+						{
+							data: 'emp_desc',
+							class: 'text-center',
+							searchable: true,
+							sortable: true,
+						},
+						{
+							data: 'max_working',
+							class: 'text-center',
+						},
+						{
+							data: 'ot_after',
+							class: 'text-center',
+						},
+						{
+							data: 'ot_rate',
+							class: 'text-center',
+						},
+						{
+							data: 'active_flag',
+							class: 'text-center',
+							render: function (active_flag) {
+								if (active_flag == 'Y') {
+									return '<i class="fas fa-check-circle" style="color: green;"></i>';
+								} else {
+									return '<i class="fas fa-times-circle" style="color: red;"></i>';
+								}
+							},
+						},
+					],
+				});
+			},
+			error: function (jqHXR, textStatus, errorThrown) {
+				showMsg(jqXHR.status + ' ' + errorThrown);
+			},
+		});
+	}
+
+	function populateEdit(thisObject) {
+		$('#register').attr('disabled', false);
+		$('#new_class').attr('disabled', false);
+
+		var currow = $(thisObject).closest('tr');
+		$('#emp_class').attr('disabled', true);
+		$('#emp_class').val(currow.find('td:eq(0)').text());
+		$('#emp_desc').val(currow.find('td:eq(1)').text());
+		$('#max_working').val(currow.find('td:eq(2)').text());
+		$('#ot_after').val(currow.find('td:eq(3)').text());
+		$('#ot_rate').val(currow.find('td:eq(4)').text());
+
+		var table = $('#datatable').DataTable();
+		if (table.row(currow).data().active_flag == 'Y') {
+			$('#active_flag').val('Yes');
+		} else {
+			$('#active_flag').val('No');
+		}
+	}
+
+	function checkForm(form) {
+		if (this.emp_class.value == '') {
+			showMsg('Please enter the Class.');
+			this.emp_class.focus();
+			return true;
+		}
+		if (this.emp_desc.value == '') {
+			showMsg('Please enter the Description.');
+			this.emp_id.focus();
+			return true;
+		}
+		return false;
+	}
+</script>
+{% endblock %}

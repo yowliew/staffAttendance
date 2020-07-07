@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Chat App</title>
+		<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css')}}" />
+		<script src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+		<script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+
+		<style type="text/css">
+			body {
+				background: black;
+			}
+			.calandar {
+				color: white;
+				position: absolute;
+				top: 10%;
+				left: 90%;
+				transform: translateX(-50%) translateX(-50%);
+				font-size: 150px;
+				padding: 0px 5px 0px 5px;
+			}
+			.clock {
+				color: white;
+				position: absolute;
+				top: 50%;
+				left: 78%;
+				transform: translateX(-50%) translateX(-50%);
+				font-size: 150px;
+				padding: 0px 5px 0px 5px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class=".container-fluid">
+			<div class="row" style="width: 100%; height: 540px;">
+				<div class="col-md-4 bg-info">
+					<div style="padding: 10px;">
+						<button
+							type="button"
+							name="reportInOut"
+							id="reportInOut"
+							class="btn btn-primary btn-lg btn-block"
+							style="margin: 10px; margin-top: 130px;"
+						>
+							Report In/Out
+						</button>
+						<button type="button" name="enroll" id="enroll" class="btn btn-primary btn-lg btn-block" style="margin: 10px; margin-top: 50px;">
+							Enroll New Finger Print
+						</button>
+					</div>
+				</div>
+				<div class="col-md-8">
+					<div id="theDate" class="calandar"></div>
+					<div id="theClock" class="clock"></div>
+				</div>
+			</div>
+			<div class="row" style="width: 101%; height: 95px;">
+				<div id="theInfo" class="col-md-12 bg-info">
+					<textarea name="displayText" id="displayText" rows="5" cols="187" style="height: auto; width: fit-content;" readonly></textarea>
+				</div>
+			</div>
+		</div>
+		<script type="text/javascript">
+			$(document).ready(function () {
+				showTime();
+
+				var server_location = 'http://' + window.location.host + '/finger_namespace';
+				var socket_message = io(server_location);
+
+				socket_message.on('connect', function () {
+					socket_message.emit('client_finger_connect', 'Socket connected.');
+				});
+
+				socket_message.on('disconnect', function () {
+					alert('Socket disconnected. Please Contact Administrator');
+				});
+
+				$('#reportInOut').click(function () {
+					socket_message.emit('client_finger_report_in_out', 'Report In/Out Employee.');
+				});
+
+				$('#enroll').click(function () {
+					socket_message.emit('client_finger_enroll', 'Enroll New Finger.');
+				});
+
+				socket_message.on('server_finger_message', function (msg) {
+					var temp_text = $('#displayText').val();
+
+					if (temp_text !== '') {
+						temp_text = temp_text + '\n' + msg;
+					} else {
+						temp_text = msg;
+					}
+					$('#displayText').html(temp_text);
+
+					// To display the last line in the textarea
+					var $textarea = $('#displayText');
+					$textarea.scrollTop($textarea[0].scrollHeight);
+				});
+			});
+
+			function showTime() {
+				var theTime = new Date();
+
+				var M = theTime.getMonth();
+				var D = theTime.getDate();
+				var Y = theTime.getFullYear();
+
+				M = M < 10 ? '0' + M : M;
+				D = D < 10 ? '0' + D : D;
+
+				todayDate = D + '/' + M + '/' + Y;
+
+				var h = theTime.getHours();
+				var m = theTime.getMinutes();
+				var s = theTime.getSeconds();
+
+				h = h < 10 ? '0' + h : h;
+				m = m < 10 ? '0' + m : m;
+				s = s < 10 ? '0' + s : s;
+
+				time = h + ':' + m + ':' + s;
+
+				document.getElementById('theDate').innerText = todayDate;
+				document.getElementById('theDate').innerContent = todayDate;
+				document.getElementById('theClock').innerText = time;
+				document.getElementById('theClock').innerContent = time;
+
+				setTimeout(showTime, 1000);
+			}
+		</script>
+	</body>
+</html>

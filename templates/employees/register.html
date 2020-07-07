@@ -1,0 +1,271 @@
+{% extends "base.html" %} {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/datatables.min.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/all.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/trxstyle.css') }}" />
+<script src="{{ url_for('static', filename='js/datatables.min.js') }}"></script>
+
+<div class="form-header">
+	<p>Register Employee</p>
+</div>
+
+<div class="container">
+	<div class="row" style="width: 123%;">
+		<div class="col-md-4">
+			<form class="form-trx">
+				<div class="form-row">
+					<div class="form-group col-md-4">
+						<label for="emp_id">Employee No*</label>
+						<input
+							type="text"
+							class="form-control"
+							id="emp_id"
+							name="emp_id"
+							maxlength="4"
+							required
+							onblur="if(this.value != '') callAjax(this.id, this.value);"
+						/>
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group col-md-12">
+						<label for="full_name">Employee Name*</label>
+						<input type="text" class="form-control" id="full_name" name="full_name" maxlength="200" required />
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group col-md-5">
+						<label for="hire_date">Hire Date</label>
+						<input type="date" class="form-control" id="hire_date" name="hire_date" />
+					</div>
+					<div class="form-group col-md-7">
+						<label for="emp_class">Employee Class*</label>
+						<select class="custom-select form-control" id="emp_class" name="emp_class"> </select>
+					</div>
+				</div>
+				<div class="form-row">
+					<div class="form-group col-md-5">
+						<label for="emp_salary">Remuneration (RM)</label>
+						<input
+							type="number"
+							class="form-control"
+							id="emp_salary"
+							name="emp_salary"
+							min="0"
+							value="0.00"
+							onchange="setTwoNumberDecimal(this)"
+							step="1.00"
+						/>
+					</div>
+					<div class="form-group col-md-3">
+						<label for="active_flag">Active</label>
+						<select class="custom-select form-control" id="active_flag" name="active_flag">
+							<option value="Yes">Yes</option>
+							<option value="No">No</option>
+						</select>
+					</div>
+				</div>
+				<br />
+				<div class="form-group form-group">
+					<button type="submit" id="new_emp" class="btn btn-info" disabled>
+						New Employee
+					</button>
+					<button type="submit" id="register" class="btn btn-info">
+						Save
+					</button>
+				</div>
+			</form>
+		</div>
+		<div class="col-md-8">
+			<div class="form">
+				<table id="datatable" class="table table-striped table-hover table-bordered" style="cursor: grab;">
+					<thead>
+						<tr>
+							<th>Employee No</th>
+							<th>Employee Name</th>
+							<th>Hire Date</th>
+							<th>Employee Class</th>
+							<th>Remuneration</th>
+							<th>Active</th>
+						</tr>
+					</thead>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+
+<script>
+	$(document).ready(function () {
+		$('#new_emp').on('click', function () {
+			$('#register').attr('disabled', false);
+			$('#new_emp').attr('disabled', true);
+
+			$('#emp_id').attr('disabled', false);
+			$('.form-group input, select').val('');
+			$('.form-group :input[type="number"]').val('0.00');
+			$('#active_flag').val('Yes');
+		});
+
+		$('#register').on('click', function () {
+			if (updateEmployee()) {
+				$('#register').attr('disabled', false);
+				$('#new_emp').attr('disabled', true);
+				$('#emp_id').attr('disabled', false);
+				$('.form-group input, select').val('');
+				$('.form-group :input[type="number"]').val('0.00');
+				$('#active_flag').val('Yes');
+			}
+		});
+
+		$('.table').on('click', 'tbody tr', function () {
+			populateEdit(this);
+		});
+	});
+
+	$(window).on('load', function () {
+		populateDatatable();
+		populateDropDown('emp_class', 'Select Employee Class..');
+	});
+
+	function updateEmployee() {
+		if (checkForm($('form')) || toStop) {
+			toStop = false;
+			return false;
+		} else {
+			var info = {
+				emp_id: $('#emp_id').val(),
+				full_name: $('#full_name').val(),
+				emp_class: $('#emp_class').val(),
+				hire_date: convertDate($('#hire_date').val(), '-', 'YYYY-MM-DD', 'DD/MM/YYYY'),
+				emp_salary: $('#emp_salary').val(),
+				active_flag: $('#active_flag').val(),
+			};
+
+			$.ajax({
+				type: 'POST',
+				url: '/employee_register',
+				data: info,
+				success: function (savedInfo, textStatus, jqXHR) {
+					showMsg(savedInfo.message);
+					populateDatatable();
+				},
+				error: function (jqHXR, textStatus, errorThrown) {
+					showMsg(jqXHR.status + ' ' + errorThrown);
+				},
+			});
+			return true;
+		}
+	}
+
+	function populateDatatable() {
+		$.ajax({
+			type: 'GET',
+			dataType: 'json',
+			url: '/employee_list',
+			success: function (data) {
+				$('#datatable').DataTable({
+					destroy: true,
+					data: data,
+					responsive: true,
+					paging: true,
+					lengthMenu: [
+						[6, 12, 18, -1],
+						[6, 12, 18, 'All'],
+					],
+					ordering: true,
+					processing: true,
+					sort: true,
+					searching: true,
+					scrollY: 290,
+					deferRender: true,
+					info: true,
+					columns: [
+						{ data: 'emp_id' },
+						{
+							data: 'full_name',
+							class: 'text-center',
+						},
+						{
+							data: 'hire_date',
+							class: 'text-right',
+							searchable: true,
+							sortable: false,
+						},
+						{
+							data: 'emp_class',
+							class: 'text-center',
+						},
+						{
+							data: 'emp_salary',
+							class: 'text-right',
+							render: function (emp_salary) {
+								return 'RM ' + emp_salary;
+							},
+						},
+						{
+							data: 'active_flag',
+							class: 'text-center',
+							render: function (active_flag) {
+								if (active_flag == 'Y') {
+									return '<i class="fas fa-check-circle" style="color: green;"></i>';
+								} else {
+									return '<i class="fas fa-times-circle" style="color: red;"></i>';
+								}
+							},
+						},
+					],
+				});
+			},
+
+			error: function (jqHXR, textStatus, errorThrown) {
+				showMsg(jqXHR.status + ' ' + errorThrown);
+			},
+		});
+	}
+
+	function populateEdit(thisObject) {
+		$('#register').attr('disabled', false);
+		$('#new_emp').attr('disabled', false);
+
+		var currow = $(thisObject).closest('tr');
+		$('#emp_id').val(currow.find('td:eq(0)').text());
+		$('#emp_id').attr('disabled', true);
+		$('#full_name').val(currow.find('td:eq(1)').text());
+		$('#emp_class').val(currow.find('td:eq(3)').text());
+		$('#emp_salary').val(currow.find('td:eq(4)').text().substr(3));
+		//		alert(currow.find('td:eq(5)').data().active_flag);
+
+		var table = $('#datatable').DataTable();
+		if (table.row(currow).data().active_flag == 'Y') {
+			$('#active_flag').val('Yes');
+		} else {
+			$('#active_flag').val('No');
+		}
+
+		var actualDate = convertDate(currow.find('td:eq(2)').text(), '/', 'DD/MM/YYYY', 'YYYY-MM-DD');
+
+		$('#hire_date').val(actualDate);
+	}
+
+	function checkForm(form) {
+		if (this.emp_class.value == '') {
+			showMsg('Please select the Employee Class.');
+			this.emp_class.focus();
+			return true;
+		}
+		if (this.emp_id.value == '') {
+			showMsg('Please enter the Employee Number.');
+			this.emp_id.focus();
+			return true;
+		}
+		if (this.full_name.value == '') {
+			showMsg('Please enter the Name.');
+			this.full_name.focus();
+			return true;
+		}
+		return false;
+	}
+</script>
+{% endblock %}

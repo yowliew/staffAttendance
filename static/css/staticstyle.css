@@ -1,0 +1,17 @@
+.form {
+	background-color: bisque;
+	border-style: hidden;
+}
+.form-header {
+	font-size: x-large;
+	font-weight: 500;
+	color: green;
+	font-style: italic;
+	text-align: center;
+}
+.success {
+	font-size: large;
+	font-weight: 400;
+	color: green;
+	text-align: center;
+}
