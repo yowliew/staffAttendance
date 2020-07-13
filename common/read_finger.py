@@ -1,4 +1,5 @@
 import time
+import hashlib
 from common.pyfingerprint import PyFingerprint
 from common.pyfingerprint import FINGERPRINT_CHARBUFFER1
 from common.pyfingerprint import FINGERPRINT_CHARBUFFER2
