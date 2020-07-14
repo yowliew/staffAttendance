@@ -1,8 +1,7 @@
-from flask import request
 from flask_socketio import emit
 from pre_app import socketio
 
-import common.read_finger as scanner
+import resources.read_finger as scanner
 
 # users = {}
 
@@ -22,8 +21,8 @@ def get_connected(msg):
 
 @socketio.on("client_finger_enroll", namespace="/finger_namespace")
 def get_enroll(msg):
-    print(msg)
-    emit("server_finger_message", msg, namespace="/finger_namespace")
+    print("Enroll fingerprint for " + msg)
+    emit("server_finger_message", "Enroll fingerprint for " + msg, namespace="/finger_namespace")
     scanner.enroll(namespace="/finger_namespace")
 
 

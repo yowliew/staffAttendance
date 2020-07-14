@@ -95,3 +95,42 @@ class EClassModel(Ancestor, db1.Model):
     @classmethod
     def find_all_class(cls):
         return cls.query.all()
+
+
+
+class EFingerModel(Ancestor, db1.Model):
+    __tablename__ = "employee_finger"
+
+    id = db1.Column(db1.Integer, primary_key=True)
+    emp_id = db1.Column(db1.Integer, index=True, nullable=False)
+    emp_hashval = db1.Column(db1.String(500), nullable=False)
+    finger_id = db1.Column(db1.Integer, index=True, nullable=False)
+    active_flag = db1.Column(db1.String(1), nullable=False)
+
+    def __init__(self, emp_id, emp_hashval, finger_id, active_flag):
+        self.emp_id = emp_id
+        self.emp_hashval = emp_hashval
+        self.finger_id = finger_id
+        self.active_flag = active_flag
+        self.add_user = session["username"] if "username" in session else ""
+
+    def json(self) -> Dict:
+        return {
+            "id": self.id,
+            "emp_id": self.emp_id,
+            "emp_hashval": self.emp_hashval,
+            "finger_flag": self.finger_id,
+            "active_flag": self.active_flag
+        }
+
+    @classmethod
+    def find_by_emp_id(cls, emp_id):
+        return cls.query.filter_by(emp_id=emp_id).first()
+
+    @classmethod
+    def find_by_finger_id(cls, finger_id):
+        return cls.query.filter_by(finger_id=finger_id).first()
+
+    @classmethod
+    def find_all_finger(cls):
+        return cls.query.all()

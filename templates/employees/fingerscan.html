@@ -42,13 +42,13 @@
 						<button type="button" name="enroll" id="enroll" class="btn btn-primary btn-lg btn-block" style="margin: 10px; margin-top: 50px;">
 							Enroll New Finger Print
 						</button>
-						<div class="form-row border ml-3">
+						<div id="toEnroll" class="form-row border ml-3" style="display: none;">
 							<div class="form-group col-md-12 p-3">
 								<label for="theEmployee">Employees*</label>
 								<select class="custom-select form-control" id="theEmployee" name="theEmployee"> </select>
 							</div>
 							<button type="button" name="toScan" id="toScan" class="btn btn-primary btn-lg btn-block" style="margin: 10px; margin-top: 50px;">
-								Start Enroll Finger Print
+								Enroll Finger Print Now
 							</button>
 						</div>
 					</div>
@@ -88,7 +88,19 @@
 				});
 
 				$('#enroll').click(function () {
-					socket_message.emit('client_finger_enroll', 'Enroll New Finger.');
+					$('#toEnroll').show();
+					$('#enroll').hide();
+					$('#reportInOut').hide();
+				});
+
+				$('#toScan').click(function () {
+					socket_message.emit('client_finger_enroll', $('#theEmployee').val());
+
+					// to use callback funtion to reset the screen after the finger scanner complete the job
+					$('#toEnroll').hide();
+					$('#enroll').show();
+					$('#reportInOut').show();
+					$('#theEmployee').val('');
 				});
 
 				socket_message.on('server_finger_message', function (msg) {
