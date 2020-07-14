@@ -1,6 +1,6 @@
 from flask_restful import Resource, reqparse
 from flask import session, jsonify
-from models.employees import EClassModel
+from models.employees import EClassModel, EmployeeModel
 
 
 # from models.master import StateModel, ZipModel
@@ -25,7 +25,8 @@ class PopulateDropdown(Resource):
 
     def redirect(self, field):
         switcher = {
-            "emp_class": self.emp_class
+            "emp_class": self.emp_class,
+            "theEmployee": self.theEmployee
         }
         func = switcher.get(field, lambda: 'Invalid')
         return func()
@@ -36,6 +37,15 @@ class PopulateDropdown(Resource):
             # print(item.emp_class)
             # json_string = "{" + "id:" + str(item.id) + "," + "emp_class:" + item.emp_class + "}"
             json_string = {"id": str(item.id), "name": item.emp_class}
+            data.append(json_string)
+        return data
+
+    def theEmployee(self):
+        data = []
+        for item in EmployeeModel.find_all_employee():
+            # print(item.emp_class)
+            # json_string = "{" + "id:" + str(item.id) + "," + "emp_class:" + item.emp_class + "}"
+            json_string = {"id": str(item.emp_id), "name": item.full_name}
             data.append(json_string)
         return data
 

@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<title>Chat App</title>
+		<title>Attendance</title>
 		<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css')}}" />
 		<script src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script>
 		<script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
@@ -42,6 +42,15 @@
 						<button type="button" name="enroll" id="enroll" class="btn btn-primary btn-lg btn-block" style="margin: 10px; margin-top: 50px;">
 							Enroll New Finger Print
 						</button>
+						<div class="form-row border ml-3">
+							<div class="form-group col-md-12 p-3">
+								<label for="theEmployee">Employees*</label>
+								<select class="custom-select form-control" id="theEmployee" name="theEmployee"> </select>
+							</div>
+							<button type="button" name="toScan" id="toScan" class="btn btn-primary btn-lg btn-block" style="margin: 10px; margin-top: 50px;">
+								Start Enroll Finger Print
+							</button>
+						</div>
 					</div>
 				</div>
 				<div class="col-md-8">
@@ -56,6 +65,9 @@
 			</div>
 		</div>
 		<!-- style="height: auto; width: fit-content;" -->
+
+		<script src="/static/js/utils.js"></script>
+
 		<script type="text/javascript">
 			$(document).ready(function () {
 				showTime();
@@ -93,6 +105,10 @@
 					var $textarea = $('#displayText');
 					$textarea.scrollTop($textarea[0].scrollHeight);
 				});
+			});
+
+			$(window).on('load', function () {
+				populateDropDown('theEmployee', 'Select Employee..');
 			});
 
 			function showTime() {
