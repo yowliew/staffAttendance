@@ -42,7 +42,7 @@ class PopulateDropdown(Resource):
 
     def theEmployee(self):
         data = []
-        for item in EmployeeModel.find_all_employee():
+        for item in EmployeeModel.find_all_active_employee():
             # print(item.emp_class)
             # json_string = "{" + "id:" + str(item.id) + "," + "emp_class:" + item.emp_class + "}"
             json_string = {"id": str(item.emp_id), "name": item.full_name}

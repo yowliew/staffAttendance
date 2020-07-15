@@ -1,16 +1,17 @@
 import time
+import datetime
 import hashlib
 from common.pyfingerprint import PyFingerprint
 from common.pyfingerprint import FINGERPRINT_CHARBUFFER1
 from common.pyfingerprint import FINGERPRINT_CHARBUFFER2
 from flask_socketio import emit
 
-from models.employees import EFingerModel
+from models.employees import EFingerModel, EmployeeModel, AttModel
 
 
 # Enrolls new finger
 
-def enroll(namespace):
+def enroll(emp_name, namespace):
     # Tries to initialize the sensor
     try:
         f = PyFingerprint('/dev/ttyUSB0', 57600, 0xFFFFFFFF, 0x00000000)
@@ -23,6 +24,7 @@ def enroll(namespace):
         print("The fingerprint sensor could not be initialized!")
         emit("server_finger_message", "Exception message: " + str(e), namespace=namespace)
         print("Exception message: " + str(e))
+        emit("server_finger_completed", "Cannot find the Device or Password not correct.", namespace=namespace)
         exit(1)
 
     # Gets some sensor information
@@ -78,16 +80,33 @@ def enroll(namespace):
 
         # Saves template at new position number
         positionNumber = f.storeTemplate()
-        emit("server_finger_message", "Finger enrolled successfully!", namespace=namespace)
-        print('Finger enrolled successfully!')
-        emit("server_finger_message", "New template position #: " + str(positionNumber), namespace=namespace)
-        print('New template position #' + str(positionNumber))
+
+        f.loadTemplate(positionNumber, FINGERPRINT_CHARBUFFER2)
+
+        # Downloads the characteristics of template loaded in charbuffer 2
+        characterics = str(f.downloadCharacteristics(FINGERPRINT_CHARBUFFER2)).encode('utf-8')
+
+        # Hashes characteristics of template
+        hash_val = hashlib.sha256(characterics).hexdigest()
+
+        employee = EmployeeModel.find_by_name(emp_name)
+        if employee:
+            emp_id = employee.emp_id
+            employee_finger = EFingerModel(emp_id, hash_val, positionNumber, 'Y')
+            employee_finger.save_to_db()
+
+            emit("server_finger_message", "Finger enrolled successfully!", namespace=namespace)
+            print('Finger enrolled successfully!')
+            emit("server_finger_message", "New template position #: " + str(positionNumber), namespace=namespace)
+            print('New template position #' + str(positionNumber))
+            emit("server_finger_completed", "Finger Committed to Database.", namespace=namespace)
 
     except Exception as e:
         emit("server_finger_message", "Operation failed!", namespace=namespace)
         print('Operation failed!')
         emit("server_finger_message", "Exception message: " + str(e), namespace=namespace)
         print('Exception message: ' + str(e))
+        emit("server_finger_completed", "Finger not Committed to Database.", namespace=namespace)
         exit(1)
 
 
@@ -104,6 +123,7 @@ def report_in_out(namespace):
         print('The fingerprint sensor could not be initialized!')
         emit("server_finger_message", "Exception message: " + str(e), namespace=namespace)
         print('Exception message: ' + str(e))
+        emit("server_finger_completed", "Cannot find the Device or Password not correct.", namespace=namespace)
         exit(1)
 
     # Gets some sensor information
@@ -142,19 +162,41 @@ def report_in_out(namespace):
             emit("server_finger_message", "The accuracy score is: " + str(accuracyScore), namespace=namespace)
             print('The accuracy score is: ' + str(accuracyScore))
 
-        # OPTIONAL stuff
-        #
+            # Downloads the characteristics of template loaded in charbuffer 1
+            characterics = str(f.downloadCharacteristics(FINGERPRINT_CHARBUFFER1)).encode('utf-8')
+            hash_val = hashlib.sha256(characterics).hexdigest()
+            current_datetime = datetime.datetime.now()
 
-        # Loads the found template to charbuffer 1
-        f.loadTemplate(positionNumber, FINGERPRINT_CHARBUFFER1)
+            employee_finger = EFingerModel.find_by_finger_id(positionNumber)
+            emp_id = employee_finger.emp_id
+            finger_id = employee_finger.finger_id
 
-        # Downloads the characteristics of template loaded in charbuffer 1
-        characterics = str(f.downloadCharacteristics(FINGERPRINT_CHARBUFFER1)).encode('utf-8')
+            if employee_finger:
+                employee_att = AttModel.find_by_emp_id_not_out(emp_id)
+                if employee_att:
+                    pass
+                    # this is check out function for employee
+                    in_datetime = employee_att.in_date
+                    duration = current_datetime - in_datetime
 
-        # Hashes characteristics of template
-        emit("server_finger_message", "SHA-2 hash of template: " + hashlib.sha256(characterics).hexdigest(),
-             namespace=namespace)
-        print('SHA-2 hash of template: ' + hashlib.sha256(characterics).hexdigest())
+                    duration_seconds = duration.total_seconds()
+                    actual_duration = duration_seconds / 3600
+
+                    employee_att.out_date = current_datetime
+                    employee_att.tot_work = actual_duration
+                    employee_att.save_to_db()
+
+                    emit("server_finger_message", "Report Out Completed!", namespace=namespace)
+                    print("Report Out Completed!")
+                else:
+                    # this is check in for employee
+                    employee_att = AttModel(emp_id, hash_val, finger_id, current_datetime, None, 0, "Y")
+                    employee_att.save_to_db()
+
+                    emit("server_finger_message", "Report in Completed!", namespace=namespace)
+                    print("Report in Completed!")
+            else:
+                raise ValueError('The given fingerprint not found in fingerprint store')
 
     except Exception as e:
         emit("server_finger_message", "Operation failed!", namespace=namespace)

@@ -3,6 +3,7 @@ from pre_app import socketio
 
 import resources.read_finger as scanner
 
+
 # users = {}
 
 
@@ -23,8 +24,7 @@ def get_connected(msg):
 def get_enroll(msg):
     print("Enroll fingerprint for " + msg)
     emit("server_finger_message", "Enroll fingerprint for " + msg, namespace="/finger_namespace")
-    scanner.enroll(namespace="/finger_namespace")
-
+    scanner.enroll(msg, namespace="/finger_namespace")
 
 # @socketio.on("client_finger_login", namespace="/finger_namespace")
 # def send_receive_msg(msg):

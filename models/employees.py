@@ -53,8 +53,16 @@ class EmployeeModel(Ancestor, db1.Model):
         return cls.query.filter_by(emp_id=emp_id).first()
 
     @classmethod
+    def find_by_name(cls, emp_name):
+        return cls.query.filter_by(full_name=emp_name).first()
+
+    @classmethod
     def find_all_employee(cls):
         return cls.query.all()
+
+    @classmethod
+    def find_all_active_employee(cls):
+        return cls.query.filter_by(active_flag='Y').all()
 
 
 class EClassModel(Ancestor, db1.Model):
@@ -97,7 +105,6 @@ class EClassModel(Ancestor, db1.Model):
         return cls.query.all()
 
 
-
 class EFingerModel(Ancestor, db1.Model):
     __tablename__ = "employee_finger"
 
@@ -119,7 +126,7 @@ class EFingerModel(Ancestor, db1.Model):
             "id": self.id,
             "emp_id": self.emp_id,
             "emp_hashval": self.emp_hashval,
-            "finger_flag": self.finger_id,
+            "finger_id": self.finger_id,
             "active_flag": self.active_flag
         }
 
@@ -134,3 +141,54 @@ class EFingerModel(Ancestor, db1.Model):
     @classmethod
     def find_all_finger(cls):
         return cls.query.all()
+
+
+class AttModel(Ancestor, db1.Model):
+    __tablename__ = "employee_att"
+
+    id = db1.Column(db1.Integer, primary_key=True)
+    emp_id = db1.Column(db1.Integer, index=True, nullable=False)
+    emp_hashval = db1.Column(db1.String(500), nullable=False)
+    finger_id = db1.Column(db1.Integer, index=True, nullable=False)
+    in_date = db1.Column(db1.DateTime(timezone=True))
+    out_date = db1.Column(db1.DateTime(timezone=True))
+    tot_work = db1.Column(db1.DECIMAL(4, 2), nullable=False)
+    active_flag = db1.Column(db1.String(1), nullable=False)
+
+    def __init__(self, emp_id, emp_hashval, finger_id, in_date, out_date, tot_work, active_flag):
+        self.emp_id = emp_id
+        self.emp_hashval = emp_hashval
+        self.finger_id = finger_id
+        self.in_date = in_date
+        self.out_date = out_date
+        self.tot_work = tot_work
+        self.active_flag = active_flag
+        self.add_user = session["username"] if "username" in session else ""
+
+    def json(self) -> Dict:
+        return {
+            "id": self.id,
+            "emp_id": self.emp_id,
+            "emp_hashval": self.emp_hashval,
+            "finger_id": self.finger_id,
+            "in_date": self.in_date,
+            "out_date": self.out_date,
+            "tot_work": str(self.tot_work),
+            "active_flag": self.active_flag
+        }
+
+    @classmethod
+    def find_by_emp_id(cls, emp_id):
+        return cls.query.filter_by(emp_id=emp_id).first()
+
+    @classmethod
+    def find_by_emp_id_not_in(cls, emp_id):
+        return cls.query.filter_by(emp_id=emp_id, in_date=None).first()
+
+    @classmethod
+    def find_by_emp_id_not_out(cls, emp_id):
+        return cls.query.filter_by(emp_id=emp_id, out_date=None).first()
+
+    @classmethod
+    def find_by_finger_id(cls, finger_id):
+        return cls.query.filter_by(finger_id=finger_id).first()
