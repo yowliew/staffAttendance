@@ -5,12 +5,12 @@ from common.pyfingerprint import PyFingerprint
 from common.pyfingerprint import FINGERPRINT_CHARBUFFER1
 from common.pyfingerprint import FINGERPRINT_CHARBUFFER2
 from flask_socketio import emit
+from decimal import Decimal
 
-from models.employees import EFingerModel, EmployeeModel, AttModel
+from models.employees import EFingerModel, EmployeeModel, AttModel, EClassModel
 
 
 # Enrolls new finger
-
 def enroll(emp_name, namespace):
     # Tries to initialize the sensor
     try:
@@ -32,7 +32,7 @@ def enroll(emp_name, namespace):
     storage_capacity = str(f.getStorageCapacity())
 
     emit("server_finger_message", "Currently used templates: " + template_count + "/" + storage_capacity,
-         namespace=namespace)
+        namespace=namespace)
     print('Currently used templates: ' + template_count + '/' + storage_capacity)
 
     # Tries to enroll new finger
@@ -53,7 +53,7 @@ def enroll(emp_name, namespace):
 
         if positionNumber >= 0:
             emit("server_finger_message", "Template already exists at position #: " + str(positionNumber),
-                 namespace=namespace)
+                namespace=namespace)
             print('Template already exists at position #' + str(positionNumber))
             exit(0)
 
@@ -72,7 +72,7 @@ def enroll(emp_name, namespace):
         f.convertImage(FINGERPRINT_CHARBUFFER2)
 
         # Compares the charbuffers
-        if f.compareCharacteristics() == 0:
+        if f.compareCharacteristics()==0:
             raise Exception('Fingers do not match')
 
         # Creates a template
@@ -82,10 +82,8 @@ def enroll(emp_name, namespace):
         positionNumber = f.storeTemplate()
 
         f.loadTemplate(positionNumber, FINGERPRINT_CHARBUFFER2)
-
         # Downloads the characteristics of template loaded in charbuffer 2
         characterics = str(f.downloadCharacteristics(FINGERPRINT_CHARBUFFER2)).encode('utf-8')
-
         # Hashes characteristics of template
         hash_val = hashlib.sha256(characterics).hexdigest()
 
@@ -110,7 +108,7 @@ def enroll(emp_name, namespace):
         exit(1)
 
 
-def report_in_out(namespace):
+def report_in_out(emp_name, namespace):
     # Tries to initialize the sensor
     try:
         f = PyFingerprint('/dev/ttyUSB0', 57600, 0xFFFFFFFF, 0x00000000)
@@ -131,7 +129,7 @@ def report_in_out(namespace):
     storage_capacity = str(f.getStorageCapacity())
 
     emit("server_finger_message", "Currently used templates: " + template_count + "/" + storage_capacity,
-         namespace=namespace)
+        namespace=namespace)
     print('Currently used templates: ' + str(f.getTemplateCount()) + '/' + str(f.getStorageCapacity()))
 
     # Tries to search the finger and calculate hash
@@ -152,7 +150,7 @@ def report_in_out(namespace):
         positionNumber = result[0]
         accuracyScore = result[1]
 
-        if positionNumber == -1:
+        if positionNumber==-1:
             emit("server_finger_message", "No match found!", namespace=namespace)
             print('No match found!')
             exit(0)
@@ -165,38 +163,8 @@ def report_in_out(namespace):
             # Downloads the characteristics of template loaded in charbuffer 1
             characterics = str(f.downloadCharacteristics(FINGERPRINT_CHARBUFFER1)).encode('utf-8')
             hash_val = hashlib.sha256(characterics).hexdigest()
-            current_datetime = datetime.datetime.now()
 
-            employee_finger = EFingerModel.find_by_finger_id(positionNumber)
-            emp_id = employee_finger.emp_id
-            finger_id = employee_finger.finger_id
-
-            if employee_finger:
-                employee_att = AttModel.find_by_emp_id_not_out(emp_id)
-                if employee_att:
-                    pass
-                    # this is check out function for employee
-                    in_datetime = employee_att.in_date
-                    duration = current_datetime - in_datetime
-
-                    duration_seconds = duration.total_seconds()
-                    actual_duration = duration_seconds / 3600
-
-                    employee_att.out_date = current_datetime
-                    employee_att.tot_work = actual_duration
-                    employee_att.save_to_db()
-
-                    emit("server_finger_message", "Report Out Completed!", namespace=namespace)
-                    print("Report Out Completed!")
-                else:
-                    # this is check in for employee
-                    employee_att = AttModel(emp_id, hash_val, finger_id, current_datetime, None, 0, "Y")
-                    employee_att.save_to_db()
-
-                    emit("server_finger_message", "Report in Completed!", namespace=namespace)
-                    print("Report in Completed!")
-            else:
-                raise ValueError('The given fingerprint not found in fingerprint store')
+            create_update_att(positionNumber, hash_val, namespace)
 
     except Exception as e:
         emit("server_finger_message", "Operation failed!", namespace=namespace)
@@ -204,3 +172,58 @@ def report_in_out(namespace):
         emit("server_finger_message", "Exception message: " + str(e), namespace=namespace)
         print('Exception message: ' + str(e))
         exit(1)
+
+
+def create_update_att(positionNumber, hash_val, namespace):
+    current_datetime = datetime.datetime.now()
+
+    employee_finger = EFingerModel.find_by_finger_id(positionNumber)
+    emp_id = employee_finger.emp_id
+    finger_id = employee_finger.finger_id
+
+    employee = EmployeeModel.find_by_id(emp_id)
+    if employee:
+        emp_class = employee.emp_class
+        emp_salary = employee.emp_salary
+        e_class = EClassModel.find_by_class(emp_class)
+        ot_after = e_class.ot_after
+        ot_rate = e_class.ot_rate
+        max_working = e_class.max_working
+    else:
+        raise ValueError("Error in Employee and Employee Class Store.")
+
+    if employee_finger:
+        employee_att = AttModel.find_by_emp_id_not_out(emp_id)
+        if employee_att:
+            # this is check out function for employee
+            in_datetime = employee_att.in_date
+
+            duration = current_datetime - in_datetime
+            duration_seconds = duration.total_seconds()
+            actual_duration = Decimal(duration_seconds / 3600)
+
+            # calculate OT hour and rate
+            if actual_duration > ot_after:
+                ot_hour = actual_duration - ot_after
+                ot_amt = (emp_salary / (31 * max_working)) * ot_hour * ot_rate
+            else:
+                ot_hour = 0
+                ot_amt = 0
+
+            employee_att.out_date = current_datetime
+            employee_att.tot_work = actual_duration
+            employee_att.ot_hour = ot_hour
+            employee_att.ot_amt = ot_amt
+            employee_att.save_to_db()
+
+            emit("server_finger_message", "Report Out Completed!", namespace=namespace)
+            print("Report Out Completed!")
+        else:
+            # this is check in for employee
+            employee_att = AttModel(emp_id, hash_val, finger_id, current_datetime, None, 0, 0, 0, "Y")
+            employee_att.save_to_db()
+
+            emit("server_finger_message", "Report in Completed!", namespace=namespace)
+            print("Report in Completed!")
+    else:
+        raise ValueError('The given fingerprint not found in fingerprint store.')

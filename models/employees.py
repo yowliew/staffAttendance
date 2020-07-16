@@ -109,10 +109,13 @@ class EFingerModel(Ancestor, db1.Model):
     __tablename__ = "employee_finger"
 
     id = db1.Column(db1.Integer, primary_key=True)
-    emp_id = db1.Column(db1.Integer, index=True, nullable=False)
+    # emp_id = db1.Column(db1.Integer, index=True, nullable=False)
+    emp_id = db1.Column(db1.Integer, db1.ForeignKey("employee.emp_id"), index=True, nullable=False)
     emp_hashval = db1.Column(db1.String(500), nullable=False)
     finger_id = db1.Column(db1.Integer, index=True, nullable=False)
     active_flag = db1.Column(db1.String(1), nullable=False)
+    empid = db1.relationship("EmployeeModel")
+    full_name = db1.relationship("EmployeeModel")
 
     def __init__(self, emp_id, emp_hashval, finger_id, active_flag):
         self.emp_id = emp_id
@@ -127,7 +130,7 @@ class EFingerModel(Ancestor, db1.Model):
             "emp_id": self.emp_id,
             "emp_hashval": self.emp_hashval,
             "finger_id": self.finger_id,
-            "active_flag": self.active_flag
+            "active_flag": self.active_flag,
         }
 
     @classmethod
@@ -153,15 +156,19 @@ class AttModel(Ancestor, db1.Model):
     in_date = db1.Column(db1.DateTime(timezone=True))
     out_date = db1.Column(db1.DateTime(timezone=True))
     tot_work = db1.Column(db1.DECIMAL(4, 2), nullable=False)
+    ot_hour = db1.Column(db1.DECIMAL(4, 2), nullable=False)
+    ot_amt = db1.Column(db1.DECIMAL(4, 2), nullable=False)
     active_flag = db1.Column(db1.String(1), nullable=False)
 
-    def __init__(self, emp_id, emp_hashval, finger_id, in_date, out_date, tot_work, active_flag):
+    def __init__(self, emp_id, emp_hashval, finger_id, in_date, out_date, tot_work, ot_hour, ot_amt, active_flag):
         self.emp_id = emp_id
         self.emp_hashval = emp_hashval
         self.finger_id = finger_id
         self.in_date = in_date
         self.out_date = out_date
         self.tot_work = tot_work
+        self.ot_hour = ot_hour
+        self.ot_amt = ot_amt
         self.active_flag = active_flag
         self.add_user = session["username"] if "username" in session else ""
 
@@ -174,6 +181,8 @@ class AttModel(Ancestor, db1.Model):
             "in_date": self.in_date,
             "out_date": self.out_date,
             "tot_work": str(self.tot_work),
+            "ot_hour": str(self.ot_hour),
+            "ot_amt" : str(self.ot_amt),
             "active_flag": self.active_flag
         }
 

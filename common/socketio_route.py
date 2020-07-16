@@ -17,7 +17,7 @@ def get_connected(msg):
 def get_connected(msg):
     print(msg)
     emit("server_finger_message", msg, namespace="/finger_namespace")
-    scanner.report_in_out(namespace="/finger_namespace")
+    scanner.report_in_out(msg, namespace="/finger_namespace")
 
 
 @socketio.on("client_finger_enroll", namespace="/finger_namespace")
