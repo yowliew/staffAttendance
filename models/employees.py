@@ -109,13 +109,13 @@ class EFingerModel(Ancestor, db1.Model):
     __tablename__ = "employee_finger"
 
     id = db1.Column(db1.Integer, primary_key=True)
-    # emp_id = db1.Column(db1.Integer, index=True, nullable=False)
-    emp_id = db1.Column(db1.Integer, db1.ForeignKey("employee.emp_id"), index=True, nullable=False)
+    emp_id = db1.Column(db1.Integer, index=True, nullable=False)
+    # emp_id = db1.Column(db1.Integer, db1.ForeignKey("employee.emp_id"), index=True, nullable=False)
     emp_hashval = db1.Column(db1.String(500), nullable=False)
     finger_id = db1.Column(db1.Integer, index=True, nullable=False)
     active_flag = db1.Column(db1.String(1), nullable=False)
-    empid = db1.relationship("EmployeeModel")
-    full_name = db1.relationship("EmployeeModel")
+    # empid = db1.relationship("EmployeeModel")
+    # full_name = db1.relationship("EmployeeModel")
 
     def __init__(self, emp_id, emp_hashval, finger_id, active_flag):
         self.emp_id = emp_id

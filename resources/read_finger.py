@@ -21,68 +21,51 @@ def enroll(emp_name, namespace):
 
     emit_message("Currently used templates: " + template_count + "/" + storage_capacity, namespace)
 
-    # Tries to enroll new finger
-    try:
-        emit_message("Waiting for finger...", namespace)
+    count = 1
+    while count <= 5:
+        try:
+            emit_message("Waiting for finger #" + str(count), namespace)
 
-        # Wait that finger is read
-        while not f.readImage():
-            pass
+            # Wait that finger is read
+            while not f.readImage():
+                pass
 
-        # Converts read image to characteristics and stores it in charbuffer 1
-        f.convertImage(FINGERPRINT_CHARBUFFER1)
+            # Converts read image to characteristics and stores it in charbuffer 1
+            f.convertImage(FINGERPRINT_CHARBUFFER1)
+            emit_message("Remove finger...", namespace)
+            time.sleep(1.5)
 
-        # Checks if finger is already enrolled
-        result = f.searchTemplate()
-        positionNumber = result[0]
+            # Creates a template
+            f.createTemplate()
 
-        if positionNumber >= 0:
-            emit_message("Template already exists at position #: " + str(positionNumber), namespace)
-            exit(0)
+            # Saves template at new position number
+            positionNumber = f.storeTemplate()
 
-        emit_message("Remove finger...", namespace)
-        time.sleep(1)
-        emit_message("Waiting for same finger again...", namespace)
+            f.loadTemplate(positionNumber, FINGERPRINT_CHARBUFFER1)
+            # Downloads the characteristics of template loaded in charbuffer 1
+            characterics = str(f.downloadCharacteristics(FINGERPRINT_CHARBUFFER1)).encode('utf-8')
+            # Hashes characteristics of template
+            hash_val = hashlib.sha256(characterics).hexdigest()
 
-        # Wait that finger is read again
-        while not f.readImage():
-            pass
+            employee = EmployeeModel.find_by_name(emp_name)
+            if employee:
+                emp_id = employee.emp_id
+                employee_finger = EFingerModel(emp_id, hash_val, positionNumber, 'Y')
+                employee_finger.save_to_db()
 
-        # Converts read image to characteristics and stores it in charbuffer 2
-        f.convertImage(FINGERPRINT_CHARBUFFER2)
+                emit_message("Finger enrolled successfully!", namespace)
+                emit_message("New template position #: " + str(positionNumber), namespace)
+                emit_message("Finger Committed to Database.", namespace)
+                count += 1
 
-        # Compares the charbuffers
-        if f.compareCharacteristics()==0:
-            raise Exception('Fingers do not match')
+        except Exception as e:
+            emit_message("Operation failed!", namespace)
+            emit_message("Exception message: " + str(e), namespace)
+            emit_message("Finger not Committed to Database.", namespace)
+            f.deleteTemplate(positionNumber)
+            exit(1)
 
-        # Creates a template
-        f.createTemplate()
-
-        # Saves template at new position number
-        positionNumber = f.storeTemplate()
-
-        f.loadTemplate(positionNumber, FINGERPRINT_CHARBUFFER2)
-        # Downloads the characteristics of template loaded in charbuffer 2
-        characterics = str(f.downloadCharacteristics(FINGERPRINT_CHARBUFFER2)).encode('utf-8')
-        # Hashes characteristics of template
-        hash_val = hashlib.sha256(characterics).hexdigest()
-
-        employee = EmployeeModel.find_by_name(emp_name)
-        if employee:
-            emp_id = employee.emp_id
-            employee_finger = EFingerModel(emp_id, hash_val, positionNumber, 'Y')
-            employee_finger.save_to_db()
-
-            emit_message("Finger enrolled successfully!", namespace)
-            emit_message("New template position #: " + str(positionNumber), namespace)
-            emit_message("Finger Committed to Database.", namespace)
-
-    except Exception as e:
-        emit_message("Operation failed!", namespace)
-        emit_message("Exception message: " + str(e), namespace)
-        emit_message("Finger not Committed to Database.", namespace)
-        f.deleteTemplate(positionNumber)
-        exit(1)
+    emit_message("Thanks. You have completed 5 finger Scans", namespace)
 
 
 # Report In/Out for work
