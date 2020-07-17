@@ -12,33 +12,18 @@ from models.employees import EFingerModel, EmployeeModel, AttModel, EClassModel
 
 # Enrolls new finger
 def enroll(emp_name, namespace):
-    # Tries to initialize the sensor
-    try:
-        f = PyFingerprint('/dev/ttyUSB0', 57600, 0xFFFFFFFF, 0x00000000)
-
-        if not f.verifyPassword():
-            raise ValueError('The given fingerprint sensor password is wrong!')
-
-    except Exception as e:
-        emit("server_finger_message", "The fingerprint sensor could not be initialized!", namespace=namespace)
-        print("The fingerprint sensor could not be initialized!")
-        emit("server_finger_message", "Exception message: " + str(e), namespace=namespace)
-        print("Exception message: " + str(e))
-        emit("server_finger_completed", "Cannot find the Device or Password not correct.", namespace=namespace)
-        exit(1)
+    f = initialize_device(namespace)
+    positionNumber = 1000
 
     # Gets some sensor information
     template_count = str(f.getTemplateCount())
     storage_capacity = str(f.getStorageCapacity())
 
-    emit("server_finger_message", "Currently used templates: " + template_count + "/" + storage_capacity,
-        namespace=namespace)
-    print('Currently used templates: ' + template_count + '/' + storage_capacity)
+    emit_message("Currently used templates: " + template_count + "/" + storage_capacity, namespace)
 
     # Tries to enroll new finger
     try:
-        emit("server_finger_message", "Waiting for finger...", namespace=namespace)
-        print('Waiting for finger...')
+        emit_message("Waiting for finger...", namespace)
 
         # Wait that finger is read
         while not f.readImage():
@@ -52,17 +37,12 @@ def enroll(emp_name, namespace):
         positionNumber = result[0]
 
         if positionNumber >= 0:
-            emit("server_finger_message", "Template already exists at position #: " + str(positionNumber),
-                namespace=namespace)
-            print('Template already exists at position #' + str(positionNumber))
+            emit_message("Template already exists at position #: " + str(positionNumber), namespace)
             exit(0)
 
-        emit("server_finger_message", "Remove finger...", namespace=namespace)
-        print('Remove finger...')
+        emit_message("Remove finger...", namespace)
         time.sleep(1)
-
-        emit("server_finger_message", "Waiting for same finger again...", namespace=namespace)
-        print('Waiting for same finger again...')
+        emit_message("Waiting for same finger again...", namespace)
 
         # Wait that finger is read again
         while not f.readImage():
@@ -93,49 +73,32 @@ def enroll(emp_name, namespace):
             employee_finger = EFingerModel(emp_id, hash_val, positionNumber, 'Y')
             employee_finger.save_to_db()
 
-            emit("server_finger_message", "Finger enrolled successfully!", namespace=namespace)
-            print('Finger enrolled successfully!')
-            emit("server_finger_message", "New template position #: " + str(positionNumber), namespace=namespace)
-            print('New template position #' + str(positionNumber))
-            emit("server_finger_completed", "Finger Committed to Database.", namespace=namespace)
+            emit_message("Finger enrolled successfully!", namespace)
+            emit_message("New template position #: " + str(positionNumber), namespace)
+            emit_message("Finger Committed to Database.", namespace)
 
     except Exception as e:
-        emit("server_finger_message", "Operation failed!", namespace=namespace)
-        print('Operation failed!')
-        emit("server_finger_message", "Exception message: " + str(e), namespace=namespace)
-        print('Exception message: ' + str(e))
-        emit("server_finger_completed", "Finger not Committed to Database.", namespace=namespace)
+        emit_message("Operation failed!", namespace)
+        emit_message("Exception message: " + str(e), namespace)
+        emit_message("Finger not Committed to Database.", namespace)
+        f.deleteTemplate(positionNumber)
         exit(1)
 
 
+# Report In/Out for work
 def report_in_out(emp_name, namespace):
-    # Tries to initialize the sensor
-    try:
-        f = PyFingerprint('/dev/ttyUSB0', 57600, 0xFFFFFFFF, 0x00000000)
-
-        if not f.verifyPassword():
-            raise ValueError('The given fingerprint sensor password is wrong!')
-
-    except Exception as e:
-        emit("server_finger_message", "The fingerprint sensor could not be initialized!", namespace=namespace)
-        print('The fingerprint sensor could not be initialized!')
-        emit("server_finger_message", "Exception message: " + str(e), namespace=namespace)
-        print('Exception message: ' + str(e))
-        emit("server_finger_completed", "Cannot find the Device or Password not correct.", namespace=namespace)
-        exit(1)
+    f = initialize_device(namespace)
+    positionNumber = 1000
 
     # Gets some sensor information
     template_count = str(f.getTemplateCount())
     storage_capacity = str(f.getStorageCapacity())
 
-    emit("server_finger_message", "Currently used templates: " + template_count + "/" + storage_capacity,
-        namespace=namespace)
-    print('Currently used templates: ' + str(f.getTemplateCount()) + '/' + str(f.getStorageCapacity()))
+    emit_message("Currently used templates: " + template_count + "/" + storage_capacity, namespace)
 
     # Tries to search the finger and calculate hash
     try:
-        emit("server_finger_message", "Waiting for finger...", namespace=namespace)
-        print('Waiting for finger...')
+        emit_message("Waiting for finger...", namespace)
 
         # Wait that finger is read
         while not f.readImage():
@@ -151,14 +114,11 @@ def report_in_out(emp_name, namespace):
         accuracyScore = result[1]
 
         if positionNumber==-1:
-            emit("server_finger_message", "No match found!", namespace=namespace)
-            print('No match found!')
+            emit_message("No match found!", namespace)
             exit(0)
         else:
-            emit("server_finger_message", "Found template at position #" + str(positionNumber), namespace=namespace)
-            print('Found template at position #' + str(positionNumber))
-            emit("server_finger_message", "The accuracy score is: " + str(accuracyScore), namespace=namespace)
-            print('The accuracy score is: ' + str(accuracyScore))
+            emit_message("Found template at position #" + str(positionNumber), namespace)
+            emit_message("The accuracy score is: " + str(accuracyScore), namespace)
 
             # Downloads the characteristics of template loaded in charbuffer 1
             characterics = str(f.downloadCharacteristics(FINGERPRINT_CHARBUFFER1)).encode('utf-8')
@@ -167,10 +127,8 @@ def report_in_out(emp_name, namespace):
             create_update_att(positionNumber, hash_val, namespace)
 
     except Exception as e:
-        emit("server_finger_message", "Operation failed!", namespace=namespace)
-        print('Operation failed!')
-        emit("server_finger_message", "Exception message: " + str(e), namespace=namespace)
-        print('Exception message: ' + str(e))
+        emit_message("Operation failed!", namespace)
+        emit_message("Exception message: " + str(e), namespace)
         exit(1)
 
 
@@ -216,14 +174,34 @@ def create_update_att(positionNumber, hash_val, namespace):
             employee_att.ot_amt = ot_amt
             employee_att.save_to_db()
 
-            emit("server_finger_message", "Report Out Completed!", namespace=namespace)
-            print("Report Out Completed!")
+            emit_message("Report Out Completed!", namespace)
         else:
             # this is check in for employee
             employee_att = AttModel(emp_id, hash_val, finger_id, current_datetime, None, 0, 0, 0, "Y")
             employee_att.save_to_db()
 
-            emit("server_finger_message", "Report in Completed!", namespace=namespace)
-            print("Report in Completed!")
+            emit_message("Report In Completed!", namespace)
     else:
         raise ValueError('The given fingerprint not found in fingerprint store.')
+
+
+def initialize_device(namespace):
+    # Tries to initialize the sensor
+    try:
+        finger_handler = PyFingerprint('/dev/ttyUSB0', 57600, 0xFFFFFFFF, 0x00000000)
+
+        if not finger_handler.verifyPassword():
+            raise ValueError('The given fingerprint sensor password is wrong!')
+
+        return finger_handler
+
+    except Exception as e:
+        emit_message("The fingerprint sensor could not be initialized!", namespace)
+        emit_message("Exception message: " + str(e), namespace)
+        emit_message("Cannot find the Device or Password not correct.", namespace)
+        exit(1)
+
+
+def emit_message(msg, namespace):
+    emit("server_finger_message", msg, namespace=namespace)
+    print(msg)
