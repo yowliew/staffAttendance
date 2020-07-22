@@ -59,19 +59,20 @@ def enroll(emp_name, namespace):
                 count += 1
 
         except Exception as e:
-            emit_message("Operation failed!", namespace)
-            emit_message("Exception message: " + str(e), namespace)
-            emit_message("Finger not Committed to Database.", namespace)
+            emit_message_error("Operation failed!", namespace)
+            emit_message_error("Exception message: " + str(e), namespace)
+            emit_message_error("Finger not Committed to Database.", namespace)
+
             f.deleteTemplate(positionNumber)
+            f.__del__()
             exit(1)
 
-    emit_message("Thanks. You have completed 5 finger Scans", namespace)
+    display_message_enroll_done(emp_name, namespace)
 
 
 # Report In/Out for work
 def report_in_out(emp_name, namespace):
     f = initialize_device(namespace)
-    positionNumber = 1000
 
     # Gets some sensor information
     template_count = str(f.getTemplateCount())
@@ -97,7 +98,7 @@ def report_in_out(emp_name, namespace):
         accuracyScore = result[1]
 
         if positionNumber==-1:
-            emit_message("No match found!", namespace)
+            emit_message_info("No match found! Try again ...", namespace)
             exit(0)
         else:
             emit_message("Found template at position #" + str(positionNumber), namespace)
@@ -110,8 +111,9 @@ def report_in_out(emp_name, namespace):
             create_update_att(positionNumber, hash_val, namespace)
 
     except Exception as e:
-        emit_message("Operation failed!", namespace)
-        emit_message("Exception message: " + str(e), namespace)
+        emit_message_error("Operation failed!", namespace)
+        emit_message_error("Exception message: " + str(e), namespace)
+        f.__del__()
         exit(1)
 
 
@@ -124,6 +126,7 @@ def create_update_att(positionNumber, hash_val, namespace):
 
     employee = EmployeeModel.find_by_id(emp_id)
     if employee:
+        full_name = employee.full_name
         emp_class = employee.emp_class
         emp_salary = employee.emp_salary
         e_class = EClassModel.find_by_class(emp_class)
@@ -138,6 +141,9 @@ def create_update_att(positionNumber, hash_val, namespace):
         if employee_att:
             # this is check out function for employee
             in_datetime = employee_att.in_date
+
+            print(in_datetime)
+            print(current_datetime)
 
             duration = current_datetime - in_datetime
             duration_seconds = duration.total_seconds()
@@ -158,14 +164,58 @@ def create_update_att(positionNumber, hash_val, namespace):
             employee_att.save_to_db()
 
             emit_message("Report Out Completed!", namespace)
+            display_message_report_out(full_name, in_datetime, current_datetime, actual_duration, ot_hour, namespace)
         else:
             # this is check in for employee
             employee_att = AttModel(emp_id, hash_val, finger_id, current_datetime, None, 0, 0, 0, "Y")
             employee_att.save_to_db()
 
             emit_message("Report In Completed!", namespace)
+            display_message_report_in(full_name, current_datetime, namespace)
     else:
         raise ValueError('The given fingerprint not found in fingerprint store.')
+
+
+def display_message_report_in(full_name, in_datetime, namespace):
+    json_message = {
+        "full_name": full_name,
+        "in_datetime": str(in_datetime)
+    }
+    emit("server_finger_completed_report_in", json_message, namespace=namespace)
+
+
+def display_message_report_out(full_name, in_datetime, out_datetime, actual_duration, ot_hour, namespace):
+    json_message = {
+        "full_name": full_name,
+        "in_datetime": str(in_datetime),
+        "out_datetime": str(out_datetime),
+        "actual_duration": str(actual_duration),
+        "ot_hour": str(ot_hour)
+    }
+    emit("server_finger_completed_report_out", json_message, namespace=namespace)
+
+
+def display_message_enroll_done(full_name, namespace):
+    json_message = {
+        "full_name": full_name,
+        "message": "Thanks. You have completed 5 fingerscans successfully"
+    }
+    emit("server_finger_completed_enroll", json_message, namespace=namespace)
+
+
+def emit_message_error(msg, namespace):
+    emit("server_finger_message_error", msg, namespace=namespace)
+    emit_message(msg, namespace)
+
+
+def emit_message_info(msg, namespace):
+    emit("server_finger_message_info", msg, namespace=namespace)
+    emit_message(msg, namespace)
+
+
+def emit_message(msg, namespace):
+    emit("server_finger_message", msg, namespace=namespace)
+    print(msg)
 
 
 def initialize_device(namespace):
@@ -179,12 +229,7 @@ def initialize_device(namespace):
         return finger_handler
 
     except Exception as e:
-        emit_message("The fingerprint sensor could not be initialized!", namespace)
-        emit_message("Exception message: " + str(e), namespace)
-        emit_message("Cannot find the Device or Password not correct.", namespace)
+        emit_message_error("The fingerprint sensor could not be initialized!", namespace)
+        emit_message_error("Exception message: " + str(e), namespace)
+        emit_message_error("Cannot find the Device or Password not correct.", namespace)
         exit(1)
-
-
-def emit_message(msg, namespace):
-    emit("server_finger_message", msg, namespace=namespace)
-    print(msg)

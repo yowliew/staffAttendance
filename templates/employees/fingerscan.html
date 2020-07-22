@@ -42,7 +42,7 @@
 						<button type="button" name="enroll" id="enroll" class="btn btn-primary btn-lg btn-block" style="margin: 10px; margin-top: 50px;">
 							Enroll New Fingerprint
 						</button>
-						<div id="toEnroll" class="form-row border ml-3" style="display: none;">
+						<div id="toEnroll" class="form-row border ml-3 mb-3" style="display: none;">
 							<div class="form-group col-md-12 p-3">
 								<label for="theEmployee">Employees*</label>
 								<select class="custom-select form-control" id="theEmployee" name="theEmployee"> </select>
@@ -56,6 +56,7 @@
 								</button>
 							</div>
 						</div>
+						<div id="servierMessageBox" class="border ml-3 p-3 bg-success" style="display: none; line-height:normal;"></div>
 					</div>
 				</div>
 				<div class="col-md-8">
@@ -90,16 +91,32 @@
 
 				$('#reportInOut').click(function () {
 					socket_message.emit('client_finger_report_in_out', 'Report In/Out Employee.');
+					$('#reportInOut').prop('disabled', true);
+					$('#enroll').prop('disabled', true);
 				});
 
 				$('#enroll').click(function () {
 					$('#toEnroll').show();
+					$('#theEmployee').prop('disabled',false);
+					$('#toBack').prop('disabled', false);
+					$('#toScan').prop('disabled', false);
 					$('#enroll').hide();
 					$('#reportInOut').hide();
 				});
 
 				$('#toScan').click(function () {
-					socket_message.emit('client_finger_enroll', $('#theEmployee').val());
+					if ($('#theEmployee').val() !== ''){
+						$('#theEmployee').prop('disabled', true);
+						$('#toBack').prop('disabled', true);
+						$('#toScan').prop('disabled', true);
+						socket_message.emit('client_finger_enroll', $('#theEmployee').val());
+					}
+					else{
+						var html_error_msg = '<p> Please Select an Employee to proceed</p>';
+						$('#servierMessageBox').html(html_error_msg);
+						$('#servierMessageBox').removeClass("bg-success").removeClass("bg-secondary").addClass("bg-danger");
+						$('#servierMessageBox').fadeIn(500).delay(1000).fadeOut(500);						
+					}
 				});
 
 				$('#toBack').click(function(){
@@ -109,14 +126,80 @@
 					$('#theEmployee').val('');
 				});
 
-				socket_message.on('server_finger_completed',function(){
-					// to use callback funtion to reset the screen after the finger scanner complete the job
-					$('#toEnroll').hide();
-					$('#enroll').show();
-					$('#reportInOut').show();
-					$('#theEmployee').val('');
+				socket_message.on('server_finger_completed_enroll',function(msg){
+
+					var html_full_name = '<h2>'+ msg.full_name +'</h2>';
+    				var html_message = '<p>' + msg.message + '</p>';
+
+					$('#servierMessageBox').html(html_full_name + html_message);
+					$('#servierMessageBox').removeClass("bg-secondary").removeClass("bg-danger").addClass("bg-success");
+					$('#servierMessageBox').fadeIn(2000).delay(2000).fadeOut(2000);
+
+					$('#theEmployee').prop('disabled',false);
+					$('#toBack').prop('disabled', false);
+					$('#toScan').prop('disabled', false);
+
 				});
 
+
+				socket_message.on('server_finger_completed_report_in',function(msg){
+					var text_in_datetime = convertDateTime(msg.in_datetime);
+
+					var html_full_name = '<h2>'+ msg.full_name +'</h2>';
+    				var html_in_datetime = '<p>Report In :' + text_in_datetime + '</p>';
+
+					$('#servierMessageBox').html(html_full_name + html_in_datetime);
+					$('#servierMessageBox').removeClass("bg-secondary").removeClass("bg-danger").addClass("bg-success");
+					$('#servierMessageBox').fadeIn(2000).delay(2000).fadeOut(2000);
+
+					$('#reportInOut').prop('disabled', false);
+					$('#enroll').prop('disabled', false);
+				});
+
+				socket_message.on('server_finger_completed_report_out',function(msg){
+					var text_in_datetime = convertDateTime(msg.in_datetime);
+					var text_out_datetime = convertDateTime(msg.out_datetime);
+					var text_hour_duration = Math.floor(msg.actual_duration).toString();
+					var text_min_duration = ((msg.actual_duration*60) % 60).toFixed(0).toString();
+
+					var html_full_name = '<h2>'+ msg.full_name +'</h2>';
+    				var html_in_datetime = '<p>Report In :' + text_in_datetime + '</p>';
+    				var html_out_datetime = '<p>Report Out :' + text_out_datetime +'</p>';
+    				var html_actual_duration = '<p>Duration: '+ text_hour_duration + '  hrs  ' + text_min_duration + '   mins' +'</p>';
+
+					$('#servierMessageBox').html(html_full_name + html_in_datetime + html_out_datetime + html_actual_duration);
+					$('#servierMessageBox').removeClass("bg-secondary").removeClass("bg-danger").addClass("bg-success");
+					$('#servierMessageBox').fadeIn(2000).delay(2000).fadeOut(2000);
+
+					$('#reportInOut').prop('disabled', false);
+					$('#enroll').prop('disabled', false);
+				});
+
+				socket_message.on('server_finger_message_info',function(msg){
+
+					var html_msg_header = '<h2>Info</h2>';
+					var html_info_msg = '<p>Message :' + msg + '</p>';
+
+					$('#servierMessageBox').html(html_msg_header + html_info_msg);
+					$('#servierMessageBox').removeClass("bg-success").removeClass("bg-danger").addClass("bg-secondary");
+					$('#servierMessageBox').fadeIn(2000).delay(2000).fadeOut(2000);
+
+					$('#reportInOut').prop('disabled', false);
+					$('#enroll').prop('disabled', false);
+					});
+
+				socket_message.on('server_finger_message_error',function(msg){
+
+					var html_msg_header = '<h2>'+ Error +'</h2>';
+    				var html_error_msg = '<p>Message :' + msg + '</p>';
+
+					$('#servierMessageBox').html(html_msg_header + html_error_msg);
+					$('#servierMessageBox').removeClass("bg-success").removeClass("bg-secondary").addClass("bg-danger");
+					$('#servierMessageBox').fadeIn(2000).delay(2000).fadeOut(2000);
+
+					$('#reportInOut').prop('disabled', false);
+					$('#enroll').prop('disabled', false);
+				});
 
 				socket_message.on('server_finger_message', function (msg) {
 					var temp_text = $('#displayText').val();
@@ -137,6 +220,23 @@
 			$(window).on('load', function () {
 				populateDropDown('theEmployee', 'Select Employee..');
 			});
+
+
+			function convertDateTime(theDate){
+				var lDate =  new Date(theDate);
+				
+				var hh = lDate.getHours() < 10 ? "0"+ lDate.getHours() : lDate.getHours();
+				var mm = lDate.getMinutes() < 10 ? "0"+ lDate.getMinutes() : lDate.getMinutes();
+				var ss = lDate.getSeconds() < 10 ? "0"+ lDate.getSeconds() : lDate.getSeconds();
+
+				var dd = lDate.getDate() < 10 ? "0"+ lDate.getDate() : lDate.getDate();
+				var mon = lDate.getMonth()+1;
+				var theMonth = mon < 10 ? "0"+ mon : mon;
+				var yyyy = lDate.getFullYear();
+
+				return dd + "/" + theMonth + "/"+yyyy + " " + hh + ":" + mm + ":" + ss;
+			};
+
 
 			function showTime() {
 				var theTime = new Date();
