@@ -14,9 +14,9 @@ elif os.environ["ENV"] == "testing":
 else:
     app.config.from_object("config.ProductionConfig")
 
-print(f'This is from app.config: {app.config["ENV"]}')
-print(app.config["DB_NAME"])
-print(app.config["DB_CONNECTION_STRING"])
+# print(f'This is from app.config: {app.config["ENV"]}')
+# print(app.config["DB_NAME"])
+# print(app.config["DB_CONNECTION_STRING"])
 
 app.config["SQLALCHEMY_DATABASE_URI"] = app.config["DB_CONNECTION_STRING"]
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -35,7 +35,6 @@ if __name__ == "__main__":
     @app.before_first_request
     def create_dbstruc():
         db1.create_all()
-
 
     # app.run()
     socketio.run(app, debug=True)
