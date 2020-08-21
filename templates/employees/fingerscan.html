@@ -15,27 +15,27 @@
 			}
 			.calandar {
 				color: white;
-				font-size: 105px;
+				font-size: 80px;
 				transform: translateY(50%);
 			}
 			.clock {
 				color: white;
-				font-size: 105px;
+				font-size: 80px;
 				transform: translateY(50%);
 			}
 		</style>
 	</head>
 	<body>
 		<div class=".container-fluid">
-			<div class="row" style="width: 100%; height: 536px;">
-				<div class="col-md-4 bg-info">
+			<div class="row" style="width: 100%; height: 353px;">
+				<div class="col-md-5 bg-info">
 					<div style="padding: 10px;">
 						<button
 							type="button"
 							name="reportInOut"
 							id="reportInOut"
 							class="btn btn-primary btn-lg btn-block"
-							style="margin: 10px; margin-top: 130px;"
+							style="margin: 10px; margin-top: 12px;"
 						>
 							Report In/Out
 						</button>
@@ -59,14 +59,14 @@
 						<div id="servierMessageBox" class="border ml-3 p-3 bg-success" style="display: none; line-height:normal;"></div>
 					</div>
 				</div>
-				<div class="col-md-8">
+				<div class="col-md-7">
 					<div id="theDate" class="d-flex calandar justify-content-center"></div>
 					<div id="theClock" class="d-flex clock justify-content-center"></div>
 				</div>
 			</div>
 			<div class="row" style="width: 100%; height: 95px;">
 				<div id="theInfo" class="col-md-12 bg-info">
-					<textarea name="displayText" id="displayText" rows="4" class="form-group form-control" style="width: 101%;" ; readonly></textarea>
+					<textarea name="displayText" id="displayText" rows="4" class="form-group form-control" style="width: 100%;" ; readonly></textarea>
 				</div>
 			</div>
 		</div>
